@@ -1,0 +1,149 @@
+# 19" Rack mount display similar to WOPR - the computer from the film War Games (1983).
+#
+# This is a modified version of https://www.printables.com/model/1167457-1u-rack-mount-wopr-leds-enclosure built using ESPHOME
+# allowing control from Home Assistant
+#
+# The display uses three 4x8x8 MAX7219 LED Matrix Modules providing a resolution of 96 x 8 pixels
+# 
+# I used this 3D printed remix of the 19" rack mount https://www.printables.com/model/1216518-improved-1u-rack-mount-wopr-leds-enclosure
+# as it fitted the MAX7219 Digit Displays I was using.
+#  
+# For a controller I used a simple ESP8266 WEMOS board I had handy but any of the supported ESPHOME platforms should work if you change
+# the board type and SPI pins.
+#
+# Extensions to the code include the ability to display the time, text message, change the brightness and turn the display on/off via homassistant.
+# 
+esphome:
+  name: wopr
+  friendly_name: WOPR
+
+esp8266:
+  board: d1
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "use-your-own-code"
+
+ota:
+  - platform: esphome
+    password: "use-your-own-code"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Wopr Fallback Hotspot"
+    password: "use-your-own-code"
+
+captive_portal:
+
+web_server:
+
+select:
+  - platform: template
+    name: Mode
+    id: mode
+    options:
+     - "WOPR"
+     - "Text"
+     - "Date/Time"
+     - "Off"
+    initial_option: "WOPR"
+    optimistic: true
+    restore_value: true
+
+switch:
+  - platform: template
+    name: 'Inverse'
+    id: inverse
+    #restore_mode: true
+    optimistic: true
+
+number:
+  - platform: template
+    name: "Brightness"
+    id: "brightness"
+    step: 1
+    min_value: 0
+    max_value: 15
+    initial_value: 6
+    restore_value: true
+    mode: slider
+    optimistic: true
+
+text:
+  - platform: template
+    name: "Message"
+    id: "message"
+    optimistic: true
+    min_length: 0
+    max_length: 100
+    mode: text
+    restore_value: true
+
+spi:
+  clk_pin: D5  # Change this to suit your controller board
+  mosi_pin: D7 # Change this to suit your controller board
+
+display:
+  - platform: max7219digit
+    cs_pin: D6  # Change this to suit your controller board
+    num_chips: 12
+    id: maxdisplay
+    reverse_enable: false
+    flip_x: false
+    scroll_mode: stop
+    scroll_dwell: 1s
+    lambda: |-
+      it.invert_on_off(id(inverse).state);
+      it.intensity(int(id(brightness).state));
+      //--------------------------------------
+      if (id(mode).state == "WOPR") {
+        it.turn_on_off(true);
+        it.scroll(false);
+        for(int x = 0; x < 96; x++ ) {
+          if (rand() & 1) {
+            for (int y = 0; y < 8; y++) {
+              if (rand() & 4) {
+                it.draw_pixel_at(x, y, COLOR_OFF);
+              } else {
+                it.draw_pixel_at(x, y, COLOR_ON);
+              };
+            };
+          };
+        };
+        delay((rand() % 4) * 1000);
+      };
+      //--------------------------------------
+      if (id(mode).state == "Text") {
+          it.turn_on_off(true);
+          it.scroll(true);
+          it.print(0, 0, id(digit_font), id(message).state.c_str());
+      }
+      //--------------------------------------
+      if (id(mode).state == "Date/Time") {
+          it.turn_on_off(true);
+          it.scroll(true);
+          it.strftime(9, 0, id(digit_font), "%D  %H:%M", id(hass_time).now());
+      };
+      //--------------------------------------
+      if (id(mode).state == "Off") {
+          it.scroll(true);
+          it.turn_on_off(false);
+      };  
+    update_interval: 1s
+
+time:
+  - platform: homeassistant
+    id: hass_time
+
+font:
+  - file: "pixelmix.ttf"
+    id: digit_font
+    size: 8
