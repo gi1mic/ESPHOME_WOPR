@@ -12,4 +12,7 @@ For a controller I used a simple ESP8266 WEMOS board I had handy but any of the 
 Extensions to the code include the ability to display the time, text message, change the brightness and turn the display on/off via homassistant.
 
 
- Note: This is  work in progress and I still need to tweak the WOPR display code as the effect is OK but not exactly what I want. 
+ Note: This is  work in progress and I still need to tweak the WOPR display code as the effect is OK but not exactly what I want.
+
+
+ You can find the pixelmix font at https://fontsaddict.com/font/pixelmix-regular.html the ttf file needs to be put in the /config/esphome directory.
