@@ -91,9 +91,13 @@ spi:
   clk_pin: D5  # Change this to suit your controller board
   mosi_pin: D7 # Change this to suit your controller board
 
+globals:
+  - id: ledmap # Used to persist state of LEDs
+    type: bool[96][8]
+
 display:
   - platform: max7219digit
-    cs_pin: D6  # Change this to suit your controller board
+    cs_pin: 7
     num_chips: 12
     id: maxdisplay
     reverse_enable: false
@@ -108,17 +112,24 @@ display:
         it.turn_on_off(true);
         it.scroll(false);
         for(int x = 0; x < 96; x++ ) {
-          if (rand() & 1) {
+          if (rand() % 100 < 30) { // randomly update each column 30% of the time
             for (int y = 0; y < 8; y++) {
-              if (rand() & 4) {
-                it.draw_pixel_at(x, y, COLOR_OFF);
+              if (rand() % 100 < 40) { // randomly light 40% of the lights
+                id(ledmap)[x][y] = true;
               } else {
-                it.draw_pixel_at(x, y, COLOR_ON);
+                id(ledmap)[x][y] = false;
               };
             };
           };
         };
-        delay((rand() % 4) * 1000);
+
+        // Set the lights on/off
+        for(int col=0; col < 96; col++)
+          for(int row=0; row < 96; row++)
+            if (id(ledmap)[col][row] == true)
+              it.draw_pixel_at(col, row, COLOR_ON);
+            else
+              it.draw_pixel_at(col, row, COLOR_OFF);
       };
       //--------------------------------------
       if (id(mode).state == "Text") {
@@ -129,7 +140,7 @@ display:
       //--------------------------------------
       if (id(mode).state == "Date/Time") {
           it.turn_on_off(true);
-          it.scroll(true);
+          it.scroll(false);
           it.strftime(9, 0, id(digit_font), "%D  %H:%M", id(hass_time).now());
       };
       //--------------------------------------
@@ -137,7 +148,7 @@ display:
           it.scroll(true);
           it.turn_on_off(false);
       };  
-    update_interval: 1s
+    update_interval: 1.5s
 
 time:
   - platform: homeassistant
